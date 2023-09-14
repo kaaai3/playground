@@ -1,0 +1,111 @@
+<html>
+<head>
+    <title>A Meaningful Page Title</title>
+    <meta charset="UTF-8">
+    <style>
+        input {
+            height: 30px;
+            margin-top: 20px;
+            width: 200px;
+        }
+        button {
+            margin-top: 20px;
+            width: 100px;
+            height: 30px;
+        }
+    </style>
+</head>
+
+<body>
+<div>
+    <textarea type="text" id="bearer" placeholder="Bearer" style="width: 600px; height: 300px;"></textarea>
+</div>
+<div>
+    <input name="workspaceId" type="text" id="workspaceId" placeholder="Resource ID">
+</div>
+<div>
+    <input name="resourceId" type="text" id="resourceId" placeholder="Workspace ID">
+</div>
+
+<button onclick="run()">Check in</button>
+
+</body>
+
+<script>
+
+    function test() {
+
+        console.log('bla')
+    }
+    function run() {
+        // const bearerToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjE5MGFkMTE4YTk0MGFkYzlmMmY1Mzc2YjM1MjkyZmVkZThjMmQwZWUiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiS2FpIHZhbiBLbG9vc3RlciIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9kZXNrYmlyZC1iYmU3MiIsImF1ZCI6ImRlc2tiaXJkLWJiZTcyIiwiYXV0aF90aW1lIjoxNjg3NzY0MzU2LCJ1c2VyX2lkIjoiS1UxY3hQblRYZlhxRzN5aG9QV0RXMW43Uzk3MyIsInN1YiI6IktVMWN4UG5UWGZYcUczeWhvUFdEVzFuN1M5NzMiLCJpYXQiOjE2OTQ2NzU5MDQsImV4cCI6MTY5NDY3OTUwNCwiZW1haWwiOiJrdmFua2xvb3N0ZXJAaW5kZXBlbmRlci5ubCIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Im1pY3Jvc29mdC5jb20iOlsiOWVlNDU2YjAtNTI0OC00MmE0LTlhYWUtZGMyOTAzMDA1MDRiIl0sImVtYWlsIjpbImt2YW5rbG9vc3RlckBpbmRlcGVuZGVyLm5sIl19LCJzaWduX2luX3Byb3ZpZGVyIjoibWljcm9zb2Z0LmNvbSJ9fQ.KvA2PbsDhC3-w1uQMMJwcwC5gTI9W-l0bFEU9N-Oek64Wc9-5Apsk4r4KkHTMfafou4XeeezMB58CD1BaTXWsDEQWyiz04eZqu1GLgqM_MaA5zZFFNKl36gfT34NLj8uERySzrBakJRMuotmpI55mE-eQ7KFL5gHjicTnNv1SOzvAshRoB7GCpMBUBqdFfMX4ovOd9Wr51wMady1avwewJzbr6getObbe7lHHiDUDa4UituMnzzE8O-zCJYsHGEUBM78lRYafW_nFHFwYTyZO-LNVRf7N2Zlj51AC_MuDYES18vipnp4HCuvmgiNhlfZISXEV96Gpjlp7NXCNpgJyg';
+        // const workspaceId = '4752';
+        // const resourceId = '60618';
+
+        var bearerToken = document.getElementById('bearer').value;
+        var workspaceId = document.getElementById('workspaceId').value;
+        var resourceId = document.getElementById('resourceId').value;
+
+        if (!bearerToken || !workspaceId || !resourceId) {
+            return
+        }
+
+        const sendRequest = async (configuration) => {
+            try {
+                const res = await fetch(configuration.url, {
+                    method: configuration.method ?? 'GET',
+                    headers: configuration.headers ?? {},
+                    body: configuration.body ?? null
+                });
+                const data = await res.json();
+                return data;
+            }
+            catch(error) {
+                console.log('Error', error);
+                return {isOk: false, error: error};
+            }
+        };
+
+
+        const getReservations = async () => {
+            return await sendRequest({
+                url: 'https://app.deskbird.com/api/v1.1/user/bookings?upcoming=true&skip=0&limit=100',
+                headers: {
+                    'Authorization': `Bearer ${bearerToken}`
+                }
+            });
+        };
+
+
+        (async function(){
+            const reservations = await getReservations();
+
+            console.log('log', reservations);
+
+            if (!reservations) {
+                return;
+            }
+            reservations.results.filter(_r => _r.bookingStatus == 'accepted' && _r.checkInStatus != 'checkedIn').forEach(_r => {
+                setTimeout(() => {
+                    sendRequest({
+                        method: 'POST',
+                        url: `https://app.deskbird.com/api/v1.1/workspaces/${workspaceId}/checkIn`,
+                        headers: {
+                            'Authorization': `Bearer ${bearerToken}`,
+                            'Accept': 'application/json, text/plain, */*',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            "workspaceId": workspaceId,
+                            "bookingId": _r.id,
+                            "resourceId": resourceId,
+                            "isInternal": true
+                        })
+                    });
+                }, 1000);
+            });
+        })();
+    };
+</script>
+
+</html>
